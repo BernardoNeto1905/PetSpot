@@ -24,13 +24,13 @@ struct MainTabView: View {
                 }
             
             // Separador 3
-            Text("Agenda & Lembretes")
+            ScheduleView()
                 .tabItem {
                     Label("Agenda", systemImage: "calendar")
                 }
             
             // Separador 4
-            Text("Comunidade")
+            CommunityView()
                 .tabItem {
                     Label("Comunidade", systemImage: "person.3.fill")
                 }
