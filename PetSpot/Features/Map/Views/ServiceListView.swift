@@ -11,6 +11,9 @@ struct ServiceListView: View {
     var viewModel: MapViewModel
     var spots: [PetSpotElement]
     
+    // Gestor de localização para permitir recarregar a lista na posição atual
+    @StateObject private var locationManager = LocationManager()
+    
     var body: some View {
         VStack {
             if spots.isEmpty && !viewModel.isLoading {
@@ -33,7 +36,7 @@ struct ServiceListView: View {
                             Text(spot.name)
                                 .font(.headline)
                             
-                            Text(spot.category)
+                            Text(translatedCategory(spot.category))
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
@@ -44,21 +47,39 @@ struct ServiceListView: View {
                 }
                 .listStyle(.plain)
                 .refreshable {
-                    await viewModel.loadPetSpots()
+                    // Recarrega os dados com as coordenadas atuais do GPS
+                    if let location = locationManager.userLocation {
+                        await viewModel.loadPetSpots()
+                    } else {
+                        await viewModel.loadPetSpots()
+                    }
                 }
             }
         }
     }
     
+    // Suporte para termos em Português e Inglês (OSM / Overpass)
     private func iconForCategory(_ category: String) -> String {
-        if category.lowercased().contains("vet") { return "cross.vial.fill" }
-        if category.lowercased().contains("parque") || category.lowercased().contains("park") { return "leaf.fill" }
+        let cat = category.lowercased()
+        if cat.contains("vet") || cat.contains("veterinary") { return "cross.vial.fill" }
+        if cat.contains("parque") || cat.contains("park") || cat.contains("dog_park") { return "leaf.fill" }
         return "bag.fill"
     }
     
     private func colorForCategory(_ category: String) -> Color {
-        if category.lowercased().contains("vet") { return .red }
-        if category.lowercased().contains("parque") || category.lowercased().contains("park") { return .green }
+        let cat = category.lowercased()
+        if cat.contains("vet") || cat.contains("veterinary") { return .red }
+        if cat.contains("parque") || cat.contains("park") || cat.contains("dog_park") { return .green }
         return .orange
+    }
+    
+    // Traduz as tags brutas do OSM para nomes amigáveis em Português
+    private func translatedCategory(_ category: String) -> String {
+        let cat = category.lowercased()
+        if cat.contains("vet") || cat.contains("veterinary") { return "Veterinário" }
+        if cat.contains("parque") || cat.contains("park") || cat.contains("dog_park") { return "Parque Canino" }
+        if cat.contains("grooming") { return "Tosquias & Banhos" }
+        if cat.contains("pet") || cat.contains("shop") || cat.contains("loja") { return "Loja de Animais" }
+        return category.capitalized
     }
 }

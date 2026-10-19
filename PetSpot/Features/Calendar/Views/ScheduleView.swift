@@ -102,9 +102,9 @@ struct ScheduleView: View {
 struct AddReminderView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-
+    
     var pets: [Pet]
-
+    
     @State private var title = ""
     @State private var date = Date()
     @State private var category = "Vacina"
@@ -114,9 +114,9 @@ struct AddReminderView: View {
     // Estado para a integração com os Lembretes do iOS
     @State private var syncWithiOSReminders = false
     @StateObject private var reminderManager = ReminderManager()
-
+    
     let categories = ["Vacina", "Consulta", "Desparasitação", "Outro"]
-
+    
     var body: some View {
         NavigationStack {
             Form {
@@ -130,7 +130,7 @@ struct AddReminderView: View {
                         }
                     }
                 }
-
+                
                 Section(header: Text("Associar a Animal")) {
                     Picker("Pet", selection: $selectedPet) {
                         Text("Nenhum / Geral").tag(Optional<Pet>.none)
@@ -139,7 +139,7 @@ struct AddReminderView: View {
                         }
                     }
                 }
-
+                
                 Section(header: Text("Notas")) {
                     TextField("Notas adicionais", text: $notes, axis: .vertical)
                 }
@@ -169,7 +169,6 @@ struct AddReminderView: View {
     }
     
     private func saveReminder() {
-        // 1. Criar e guardar o objeto no SwiftData (PetSpot)
         let newReminder = Reminder(
             title: title,
             date: date,
@@ -178,18 +177,24 @@ struct AddReminderView: View {
             syncWithiOSReminders: syncWithiOSReminders,
             pet: selectedPet
         )
-        modelContext.insert(newReminder)
         
-        // 2. Se a opção do iOS estiver ativa, grava também no EventKit
+        // 1. Inserir e Forçar o Save no SwiftData
+        modelContext.insert(newReminder)
+        try? modelContext.save()
+        
+        // 2. Se ativado, sincronizar com o EventKit
         if syncWithiOSReminders {
             let petPrefix = selectedPet != nil ? "[\(selectedPet!.name)] " : ""
             let fullTitle = "\(petPrefix)[\(category)] \(title)"
             
             reminderManager.addReminder(title: fullTitle, dueDate: date, notes: notes) { identifier in
-                if let identifier = identifier {
-                    newReminder.iosReminderIdentifier = identifier
+                DispatchQueue.main.async {
+                    if let identifier = identifier {
+                        newReminder.iosReminderIdentifier = identifier
+                        try? modelContext.save()
+                    }
+                    dismiss()
                 }
-                dismiss()
             }
         } else {
             dismiss()

@@ -100,7 +100,3 @@ struct MapServicesView: View {
         }
     }
 }
-
-#Preview {
-    MapServicesView()
-}
