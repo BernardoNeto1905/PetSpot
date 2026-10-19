@@ -12,12 +12,14 @@ struct ContentView: View {
     var viewModel: MapViewModel
     var spots: [PetSpotElement]
     
-    @State private var cameraPosition: MapCameraPosition = .region(
-        MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 38.7223, longitude: -9.1393), // Lisboa por omissão
-            span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+    @StateObject private var locationManager = LocationManager()
+    
+    @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .region(
+            MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 38.7223, longitude: -9.1393), // Lisboa por omissão
+                span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
         )
-    )
+    ))
     
     var body: some View {
         Map(position: $cameraPosition) {

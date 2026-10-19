@@ -17,6 +17,9 @@ final class Reminder {
     var isCompleted: Bool
     var category: String // Ex: "Vacina", "Consulta", "Desparasitação", "Outro"
     
+    var syncWithiOSReminders: Bool
+    var iosReminderIdentifier: String? // Guarda o ID do EventKit
+    
     // Relação opcional com o Pet
     var pet: Pet?
 
@@ -27,6 +30,8 @@ final class Reminder {
         notes: String = "",
         isCompleted: Bool = false,
         category: String = "Geral",
+        syncWithiOSReminders: Bool = false,
+        iosReminderIdentifier: String? = nil,
         pet: Pet? = nil
     ) {
         self.id = id
@@ -35,6 +40,8 @@ final class Reminder {
         self.notes = notes
         self.isCompleted = isCompleted
         self.category = category
+        self.syncWithiOSReminders = syncWithiOSReminders
+        self.iosReminderIdentifier = iosReminderIdentifier
         self.pet = pet
     }
 }

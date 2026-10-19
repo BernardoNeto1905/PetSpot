@@ -110,6 +110,10 @@ struct AddReminderView: View {
     @State private var category = "Vacina"
     @State private var notes = ""
     @State private var selectedPet: Pet?
+    
+    // Estado para a integração com os Lembretes do iOS
+    @State private var syncWithiOSReminders = false
+    @StateObject private var reminderManager = ReminderManager()
 
     let categories = ["Vacina", "Consulta", "Desparasitação", "Outro"]
 
@@ -139,6 +143,14 @@ struct AddReminderView: View {
                 Section(header: Text("Notas")) {
                     TextField("Notas adicionais", text: $notes, axis: .vertical)
                 }
+                
+                // Nova secção para ativar a sincronização com o iOS Reminders
+                Section {
+                    Toggle(isOn: $syncWithiOSReminders) {
+                        Label("Adicionar à app Lembretes do iOS", systemImage: "list.bullet.rectangle.portrait.fill")
+                            .foregroundColor(.blue)
+                    }
+                }
             }
             .navigationTitle("Novo Lembrete")
             .navigationBarTitleDisplayMode(.inline)
@@ -148,19 +160,39 @@ struct AddReminderView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Guardar") {
-                        let newReminder = Reminder(
-                            title: title,
-                            date: date,
-                            notes: notes,
-                            category: category,
-                            pet: selectedPet
-                        )
-                        modelContext.insert(newReminder)
-                        dismiss()
+                        saveReminder()
                     }
                     .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
+        }
+    }
+    
+    private func saveReminder() {
+        // 1. Criar e guardar o objeto no SwiftData (PetSpot)
+        let newReminder = Reminder(
+            title: title,
+            date: date,
+            notes: notes,
+            category: category,
+            syncWithiOSReminders: syncWithiOSReminders,
+            pet: selectedPet
+        )
+        modelContext.insert(newReminder)
+        
+        // 2. Se a opção do iOS estiver ativa, grava também no EventKit
+        if syncWithiOSReminders {
+            let petPrefix = selectedPet != nil ? "[\(selectedPet!.name)] " : ""
+            let fullTitle = "\(petPrefix)[\(category)] \(title)"
+            
+            reminderManager.addReminder(title: fullTitle, dueDate: date, notes: notes) { identifier in
+                if let identifier = identifier {
+                    newReminder.iosReminderIdentifier = identifier
+                }
+                dismiss()
+            }
+        } else {
+            dismiss()
         }
     }
 }
