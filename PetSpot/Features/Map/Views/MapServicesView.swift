@@ -8,7 +8,9 @@
 import SwiftUI
 
 struct MapServicesView: View {
-    @State private var viewModel = MapViewModel()
+    @StateObject private var viewModel = MapViewModel()
+    @StateObject private var locationManager = LocationManager()
+
     @State private var viewMode: ViewMode = .map
     @State private var selectedFilter: ServiceFilter = .all
     
@@ -34,9 +36,15 @@ struct MapServicesView: View {
         case .vet:
             return viewModel.petSpots.filter { $0.category.lowercased().contains("vet") }
         case .park:
-            return viewModel.petSpots.filter { $0.category.lowercased().contains("parque") || $0.category.lowercased().contains("park") }
+            return viewModel.petSpots.filter { 
+                let cat = $0.category.lowercased()
+                return cat.contains("parque") || cat.contains("park") || cat.contains("dog_park")
+             }
         case .shop:
-            return viewModel.petSpots.filter { $0.category.lowercased().contains("loja") || $0.category.lowercased().contains("grooming") }
+            return viewModel.petSpots.filter { 
+                let cat = $0.category.lowercased()
+                return cat.contains("loja") || cat.contains("grooming") || cat.contains("pet") || cat.contains("shop")
+             }
         }
     }
     
@@ -92,9 +100,18 @@ struct MapServicesView: View {
             }
             .navigationTitle("Mapa & Serviços 🐾")
             .navigationBarTitleDisplayMode(.inline)
+            .onChance(of: locationManager.userLocation) { newLocation in
+                if let Location = newLocation {
+                    Task {
+                        await viewModel.loadPetSpots(latitude: userLocation.latitude, longitude: userLocation.longitude)
+                    }
+                }
+            }
             .task {
-                if viewModel.petSpots.isEmpty {
-                    await viewModel.loadPetSpots()
+                if let location = locationManager.userLocation {
+                    await viewModel.loadPetSpots(latitude: location.latitude, longitude: location.longitude)
+                }else{
+                    await viewModel.loadPetSpots(latitude: 38.7223, longitude: -9.1393)
                 }
             }
         }

@@ -169,6 +169,8 @@ struct AddReminderView: View {
     }
     
     private func saveReminder() {
+        guard !title.trimmingCharacters(in: .whitespaces).isEmpty else{return}
+
         let newReminder = Reminder(
             title: title,
             date: date,
