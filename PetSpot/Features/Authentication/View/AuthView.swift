@@ -7,16 +7,20 @@
 
 import SwiftUI
 import AuthenticationServices
+import SwiftData
 
 struct AuthView: View {
     @Binding var isAuthenticated: Bool
+    
+    @Environment(\.modelContext) private var modelContext
+    @AppStorage("currentUserName") private var currentUserName: String = "Utilizador"
     
     @State private var email = ""
     @State private var password = ""
     @State private var isPasswordVisible = false
     @State private var isSignUp = false
     
-    // Cor verde principal do PetSpot (matching da imagem)
+    // Cor verde principal do PetSpot
     private let petSpotGreen = Color(red: 0.0, green: 0.68, blue: 0.42)
 
     var body: some View {
@@ -36,7 +40,7 @@ struct AuthView: View {
                     }
                     .padding(.top, 10)
                     
-                    // 3. Título e Subtítulo
+                    // 2. Título e Subtítulo
                     VStack(spacing: 6) {
                         Text(isSignUp ? "Cria a tua conta" : "Bem-vindo ao PetSpot")
                             .font(.system(size: 24, weight: .bold))
@@ -48,7 +52,7 @@ struct AuthView: View {
                             .multilineTextAlignment(.center)
                     }
                     
-                    // 4. Campos de Texto
+                    // 3. Campos de Texto
                     VStack(spacing: 12) {
                         // Campo E-mail
                         HStack(spacing: 12) {
@@ -105,12 +109,8 @@ struct AuthView: View {
                         }
                     }
                     
-                    // 5. Botão Principal "Iniciar Sessão"
-                    Button(action: {
-                        withAnimation {
-                            isAuthenticated = true
-                        }
-                    }) {
+                    // 4. Botão Principal "Iniciar Sessão / Criar Conta"
+                    Button(action: handleCustomLogin) {
                         Text(isSignUp ? "Criar Conta" : "Iniciar Sessão")
                             .font(.system(size: 16, weight: .bold))
                             .foregroundColor(.white)
@@ -121,7 +121,7 @@ struct AuthView: View {
                     }
                     .padding(.top, 4)
                     
-                    // 6. Divisória "ou continuar com"
+                    // 5. Divisória "ou continuar com"
                     HStack {
                         VStack { Divider() }
                         Text("ou continuar com")
@@ -131,30 +131,24 @@ struct AuthView: View {
                     }
                     .padding(.vertical, 4)
                     
-                    // 7. Botões de Login Social
+                    // 6. Sign in with Apple
                     SignInWithAppleButton(
                         .continue,
                         onRequest: { request in
-                            // Pede o e-mail e o nome associado à conta Apple do utilizador
                             request.requestedScopes = [.fullName, .email]
                         },
                         onCompletion: { result in
                             switch result {
                             case .success(let authorization):
                                 if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
-                                    let userIdentifier = appleIDCredential.user
-                                    _ = appleIDCredential.email
-                                    _ = appleIDCredential.fullName
+                                    let userEmail = appleIDCredential.email ?? email
+                                    let givenName = appleIDCredential.fullName?.givenName ?? "Maria"
                                     
-                                    print("Autenticado com sucesso via Apple! ID: \(userIdentifier)")
-                                    
-                                    // Entra na aplicação
-                                    DispatchQueue.main.async {
-                                        isAuthenticated = true
-                                    }
+                                    // Guarda o utilizador no SwiftData e AppStorage
+                                    saveUserSession(name: givenName, email: userEmail)
                                 }
                             case .failure(let error):
-                                print("Erro na autenticação com a Apple: \(error.localizedDescription)")
+                                print("Erro no Sign in with Apple: \(error.localizedDescription)")
                             }
                         }
                     )
@@ -162,7 +156,10 @@ struct AuthView: View {
                     .frame(height: 50)
                     .cornerRadius(25)
 
-                    Button(action: { isAuthenticated = true }) {
+                    // 7. Continuar com o Google
+                    Button(action: {
+                        saveUserSession(name: "Maria", email: "maria@google.com")
+                    }) {
                         HStack(spacing: 10) {
                             Text("G").font(.system(size: 18, weight: .bold)).foregroundColor(.blue)
                             Text("Continuar com o Google").font(.system(size: 15, weight: .semibold)).foregroundColor(.black)
@@ -192,5 +189,25 @@ struct AuthView: View {
                 .padding(.horizontal, 24)
             }
         }
+    }
+    
+    // Método auxiliar para criar/salvar o User e ativar a sessão
+    private func saveUserSession(name: String, email: String) {
+        let displayName = name.isEmpty ? "Maria" : name
+        let newUser = User(name: displayName, email: email)
+        modelContext.insert(newUser)
+        try? modelContext.save()
+        
+        currentUserName = displayName
+        
+        DispatchQueue.main.async {
+            isAuthenticated = true
+        }
+    }
+    
+    // Login por E-mail
+    private func handleCustomLogin() {
+        let extractedName = email.components(separatedBy: "@").first?.capitalized ?? "Maria"
+        saveUserSession(name: extractedName, email: email)
     }
 }
