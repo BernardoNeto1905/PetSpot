@@ -11,7 +11,8 @@ import SwiftData
 @main
 struct PetSpotApp: App {
     // Guarda o estado de autenticação no dispositivo para não pedir login de cada vez que a app abre
-    @AppStorage("isAuthenticated") private var isAuthenticated: Bool = false
+    @AppStorage("isAuthenticated")
+    private var isAuthenticated: Bool = false
 
     var body: some Scene {
         WindowGroup {
@@ -23,6 +24,8 @@ struct PetSpotApp: App {
                 AuthView(isAuthenticated: $isAuthenticated)
             }
         }
-        .modelContainer(for: [Reminder.self, Pet.self])
+        .modelContainer(for: [Reminder.self, Pet.self, User.self])
     }
 }
+
+

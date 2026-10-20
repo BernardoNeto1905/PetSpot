@@ -32,6 +32,9 @@ struct PetSpotElement: Codable, Identifiable {
         if let leisure = tags?["leisure"] {
             return leisure == "dog_park" ? "Parque para Cães" : leisure
         }
+        if let shop = tags?["shop"] {
+            return shop == "pet" ? "Loja de Animais" : shop
+        }
         return "Serviço para Animais"
     }
     

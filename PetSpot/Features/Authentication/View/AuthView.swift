@@ -57,8 +57,10 @@ struct AuthView: View {
                                 .frame(width: 20)
                             
                             TextField("E-mail", text: $email)
+                            #if os(iOS)
                                 .keyboardType(.emailAddress)
                                 .textInputAutocapitalization(.never)
+                            #endif
                                 .autocorrectionDisabled()
                         }
                         .padding()
@@ -141,8 +143,8 @@ struct AuthView: View {
                             case .success(let authorization):
                                 if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
                                     let userIdentifier = appleIDCredential.user
-                                    let email = appleIDCredential.email
-                                    let fullName = appleIDCredential.fullName
+                                    _ = appleIDCredential.email
+                                    _ = appleIDCredential.fullName
                                     
                                     print("Autenticado com sucesso via Apple! ID: \(userIdentifier)")
                                     
