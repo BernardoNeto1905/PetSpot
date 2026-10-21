@@ -150,15 +150,6 @@ struct PetListView: View {
                         }
                     }
                     
-                    // 4. AÇÕES RÁPIDAS
-                    HStack(spacing: 12) {
-                        QuickActionButton(title: "Historial Clínico", icon: "doc.text.fill", color: petSpotGreen)
-                        QuickActionButton(title: "Agenda", icon: "calendar", color: petSpotGreen)
-                        QuickActionButton(title: "Veterinários", icon: "stethoscope", color: petSpotGreen)
-                        QuickActionButton(title: "Perfil", icon: "person.fill", color: petSpotGreen)
-                    }
-                    .padding(.horizontal)
-                    
                     // 5. LEMBRETES DE HOJE
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {

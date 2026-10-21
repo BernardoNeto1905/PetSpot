@@ -15,6 +15,7 @@ struct AuthView: View {
     @Environment(\.modelContext) private var modelContext
     @AppStorage("currentUserName") private var currentUserName: String = "Utilizador"
     
+    @State private var name = ""
     @State private var email = ""
     @State private var password = ""
     @State private var isPasswordVisible = false
@@ -54,6 +55,25 @@ struct AuthView: View {
                     
                     // 3. Campos de Texto
                     VStack(spacing: 12) {
+                        
+                        // Campo Nome (Visível apenas ao Criar Conta / Registo)
+                        if isSignUp {
+                            HStack(spacing: 12) {
+                                Image(systemName: "person")
+                                    .foregroundColor(.gray)
+                                    .frame(width: 20)
+                                
+                                TextField("Nome Completo", text: $name)
+                                    .textInputAutocapitalization(.words)
+                                    .autocorrectionDisabled()
+                            }
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                            )
+                        }
+                        
                         // Campo E-mail
                         HStack(spacing: 12) {
                             Image(systemName: "envelope")
@@ -142,10 +162,15 @@ struct AuthView: View {
                             case .success(let authorization):
                                 if let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential {
                                     let userEmail = appleIDCredential.email ?? email
-                                    let givenName = appleIDCredential.fullName?.givenName ?? "Maria"
                                     
-                                    // Guarda o utilizador no SwiftData e AppStorage
-                                    saveUserSession(name: givenName, email: userEmail)
+                                    // Tenta obter o nome da conta Apple ou usa um fallback amigável
+                                    let appleName = [appleIDCredential.fullName?.givenName, appleIDCredential.fullName?.familyName]
+                                        .compactMap { $0 }
+                                        .joined(separator: " ")
+                                    
+                                    let finalName = appleName.isEmpty ? (name.isEmpty ? "Utilizador" : name) : appleName
+                                    
+                                    saveUserSession(name: finalName, email: userEmail)
                                 }
                             case .failure(let error):
                                 print("Erro no Sign in with Apple: \(error.localizedDescription)")
@@ -158,7 +183,8 @@ struct AuthView: View {
 
                     // 7. Continuar com o Google
                     Button(action: {
-                        saveUserSession(name: "Maria", email: "maria@google.com")
+                        let googleName = name.isEmpty ? "Utilizador Google" : name
+                        saveUserSession(name: googleName, email: "utilizador@google.com")
                     }) {
                         HStack(spacing: 10) {
                             Text("G").font(.system(size: 18, weight: .bold)).foregroundColor(.blue)
@@ -193,8 +219,14 @@ struct AuthView: View {
     
     // Método auxiliar para criar/salvar o User e ativar a sessão
     private func saveUserSession(name: String, email: String) {
-        let displayName = name.isEmpty ? "Maria" : name
-        let newUser = User(name: displayName, email: email)
+        let displayName = name.trimmingCharacters(in: .whitespaces).isEmpty ? "Utilizador" : name
+        
+        let newUser = User(id: UUID().uuidString,
+                           name: displayName,
+                           email: email,
+                           profileImageName: nil,
+                           createAt: Foundation.Date.now)
+        
         modelContext.insert(newUser)
         try? modelContext.save()
         
@@ -207,7 +239,15 @@ struct AuthView: View {
     
     // Login por E-mail
     private func handleCustomLogin() {
-        let extractedName = email.components(separatedBy: "@").first?.capitalized ?? "Maria"
-        saveUserSession(name: extractedName, email: email)
+        if isSignUp {
+            // No registo, usa o nome do campo se preenchido, caso contrário extrai do e-mail
+            let finalName = name.trimmingCharacters(in: .whitespaces).isEmpty ?
+                (email.components(separatedBy: "@").first?.capitalized ?? "Utilizador") : name
+            saveUserSession(name: finalName, email: email)
+        } else {
+            // No login tradicional, extrai o nome do e-mail ou usa "Utilizador"
+            let extractedName = email.components(separatedBy: "@").first?.capitalized ?? "Utilizador"
+            saveUserSession(name: extractedName, email: email)
+        }
     }
 }
