@@ -12,7 +12,9 @@ struct ProfileView: View {
     @Binding var isAuthenticated: Bool
     
     @Environment(\.modelContext) private var modelContext
-    @AppStorage("currentUserName") private var currentUserName: String = "Utilizador"
+    @AppStorage("currentUserName") private var currentUserName = "Utilizador"
+    @AppStorage("currentUserID") private var currentUserID = ""
+    
     @Query private var pets: [Pet]
     @Query private var users: [User]
     
@@ -178,6 +180,8 @@ struct ProfileView: View {
                 titleVisibility: .visible
             ) {
                 Button("Terminar sessão", role: .destructive) {
+                    currentUserID = ""
+                    currentUserName = "Utilizador"
                     isAuthenticated = false
                 }
                 Button("Cancelar", role: .cancel) { }

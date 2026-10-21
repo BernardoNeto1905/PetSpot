@@ -5,27 +5,93 @@
 //  Created by Bernardo on 09/10/2026.
 //
 
+
 import SwiftUI
 import SwiftData
 
 @main
 struct PetSpotApp: App {
-    // Guarda o estado de autenticação no dispositivo para não pedir login de cada vez que a app abre
-    @AppStorage("isAuthenticated")
-    private var isAuthenticated: Bool = false
-
     var body: some Scene {
         WindowGroup {
-            if isAuthenticated {
-                // Se estiver autenticado, apresenta a interface principal da App
-                MainTabView(isAuthenticated: $isAuthenticated)
-            } else {
-                // Caso contrário, apresenta o ecrã de Login / Registo
-                AuthView(isAuthenticated: $isAuthenticated)
-            }
+            PetSpotRootView()
         }
-        .modelContainer(for: [Reminder.self, Pet.self, User.self])
+        .modelContainer(
+            for: [
+                User.self,
+                Reminder.self,
+                Pet.self
+            ]
+        )
     }
 }
 
+struct PetSpotRootView: View {
+    @Environment(\.modelContext)
+    private var modelContext
 
+    @AppStorage("isAuthenticated")
+    private var isAuthenticated = false
+
+    @AppStorage("currentUserID")
+    private var currentUserID = ""
+
+    @AppStorage("currentUserName")
+    private var currentUserName = "Utilizador"
+
+    @State private var isCheckingSession = true
+
+    var body: some View {
+        Group {
+            if isCheckingSession {
+                ProgressView("A verificar sessão...")
+            } else if isAuthenticated {
+                MainTabView(
+                    isAuthenticated: $isAuthenticated
+                )
+            } else {
+                AuthView(
+                    isAuthenticated: $isAuthenticated
+                )
+            }
+        }
+        .task {
+            validateSession()
+        }
+    }
+
+    private func validateSession() {
+        defer {
+            isCheckingSession = false
+        }
+
+        guard !currentUserID.isEmpty else {
+            clearSession()
+            return
+        }
+
+        do {
+            guard let user = try LocalAuthService.findUser(
+                id: currentUserID,
+                context: modelContext
+            ) else {
+                clearSession()
+                return
+            }
+
+            currentUserName = user.name
+            isAuthenticated = true
+
+        } catch {
+            clearSession()
+            print(
+                "Erro ao verificar sessão: \(error)"
+            )
+        }
+    }
+
+    private func clearSession() {
+        currentUserID = ""
+        currentUserName = "Utilizador"
+        isAuthenticated = false
+    }
+}
