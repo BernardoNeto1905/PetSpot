@@ -49,9 +49,9 @@ struct ServiceListView: View {
                 .refreshable {
                     // Recarrega os dados com as coordenadas atuais do GPS
                     if let location = locationManager.userLocation {
-                        await viewModel.loadPetSpots()
+                        await viewModel.loadPetSpots(latitude: location.latitude, longitude: location.longitude)
                     } else {
-                        await viewModel.loadPetSpots()
+                        await viewModel.loadPetSpots(latitude: 38.7223, longitude: -9.1393)
                     }
                 }
             }

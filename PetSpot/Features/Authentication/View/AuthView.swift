@@ -61,8 +61,10 @@ struct AuthView: View {
                                 .frame(width: 20)
                             
                             TextField("E-mail", text: $email)
+                            #if os(iOS)
                                 .keyboardType(.emailAddress)
                                 .textInputAutocapitalization(.never)
+                            #endif
                                 .autocorrectionDisabled()
                         }
                         .padding()

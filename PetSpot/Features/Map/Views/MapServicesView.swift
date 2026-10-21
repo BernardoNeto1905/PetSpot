@@ -100,10 +100,23 @@ struct MapServicesView: View {
             }
             .navigationTitle("Mapa & Serviços 🐾")
             .navigationBarTitleDisplayMode(.inline)
-            .onChance(of: locationManager.userLocation) { newLocation in
-                if let Location = newLocation {
+            .onChange(of: locationManager.userLocation?.latitude) { _, _ in
+                if let location = locationManager.userLocation {
                     Task {
-                        await viewModel.loadPetSpots(latitude: userLocation.latitude, longitude: userLocation.longitude)
+                        await viewModel.loadPetSpots(
+                            latitude: location.latitude,
+                            longitude: location.longitude
+                        )
+                    }
+                }
+            }
+            .onChange(of: locationManager.userLocation?.longitude) { _, _ in
+                if let location = locationManager.userLocation {
+                    Task {
+                        await viewModel.loadPetSpots(
+                            latitude: location.latitude,
+                            longitude: location.longitude
+                        )
                     }
                 }
             }

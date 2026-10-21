@@ -9,6 +9,8 @@
 import SwiftUI
 
 struct MainTabView: View {
+    @Binding var isAuthenticated: Bool
+    
     var body: some View {
         TabView {
             // Separador 1
@@ -33,6 +35,10 @@ struct MainTabView: View {
             CommunityView()
                 .tabItem {
                     Label("Comunidade", systemImage: "person.3.fill")
+                }
+            ProfileView(isAuthenticated: $isAuthenticated)
+                .tabItem {
+                    Label("Perfil", systemImage: "person.crop.circle.fill")
                 }
         }
     }
