@@ -7,50 +7,52 @@
 
 import SwiftUI
 import SwiftData
+import FirebaseAuth
 
 struct AuthView: View {
+    @State private var isLoading = false
     @Binding var isAuthenticated: Bool
-
+    
     @Environment(\.modelContext) private var modelContext
-
+    
     @AppStorage("currentUserID")
     private var currentUserID = ""
-
+    
     @AppStorage("currentUserName")
     private var currentUserName = "Utilizador"
-
+    
     @State private var name = ""
     @State private var email = ""
     @State private var password = ""
     @State private var isPasswordVisible = false
     @State private var isSignUp = false
-
+    
     @State private var showAlert = false
     @State private var alertMessage = ""
-
+    
     private let petSpotGreen = Color(
         red: 0.0,
         green: 0.68,
         blue: 0.42
     )
-
+    
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
-
+                    
                     // Logótipo
                     HStack(spacing: 8) {
                         Image(systemName: "pawprint.circle.fill")
                             .font(.system(size: 32))
                             .foregroundStyle(petSpotGreen)
-
+                        
                         Text("PetSpot")
                             .font(.system(size: 28, weight: .bold))
                             .foregroundStyle(petSpotGreen)
                     }
                     .padding(.top, 20)
-
+                    
                     VStack(spacing: 6) {
                         Text(
                             isSignUp
@@ -58,7 +60,7 @@ struct AuthView: View {
                             : "Bem-vindo ao PetSpot"
                         )
                         .font(.title2.bold())
-
+                        
                         Text(
                             "Cuidar do teu melhor amigo nunca foi tão fácil."
                         )
@@ -66,9 +68,9 @@ struct AuthView: View {
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                     }
-
+                    
                     VStack(spacing: 12) {
-
+                        
                         if isSignUp {
                             inputField(
                                 icon: "person",
@@ -76,18 +78,18 @@ struct AuthView: View {
                                 text: $name
                             )
                         }
-
+                        
                         inputField(
                             icon: "envelope",
                             placeholder: "E-mail",
                             text: $email
                         )
-
+                        
                         HStack(spacing: 12) {
                             Image(systemName: "lock")
                                 .foregroundStyle(.gray)
                                 .frame(width: 20)
-
+                            
                             Group {
                                 if isPasswordVisible {
                                     TextField(
@@ -104,7 +106,7 @@ struct AuthView: View {
                             .textContentType(
                                 isSignUp ? .newPassword : .password
                             )
-
+                            
                             Button {
                                 isPasswordVisible.toggle()
                             } label: {
@@ -118,16 +120,18 @@ struct AuthView: View {
                         }
                         .padding()
                         .background(fieldBorder)
-
+                        
                     }
-
+                    
                     Button {
-                        handleAuthentication()
+                        Task {
+                            await handleAuthentication()
+                        }
                     } label: {
                         Text(
-                            isSignUp
-                            ? "Criar Conta"
-                            : "Iniciar Sessão"
+                            isLoading
+                            ? "Aguarda..."
+                            : (isSignUp ? "Criar Conta" : "Iniciar Sessão")
                         )
                         .font(.headline)
                         .foregroundStyle(.white)
@@ -136,7 +140,8 @@ struct AuthView: View {
                         .background(petSpotGreen)
                         .clipShape(Capsule())
                     }
-
+                    .disabled(isLoading)
+                    
                     HStack(spacing: 4) {
                         Text(
                             isSignUp
@@ -145,7 +150,7 @@ struct AuthView: View {
                         )
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
-
+                        
                         Button(
                             isSignUp
                             ? "Inicia Sessão"
@@ -169,12 +174,12 @@ struct AuthView: View {
             }
         }
     }
-
+    
     private var fieldBorder: some View {
         RoundedRectangle(cornerRadius: 14)
             .stroke(Color.gray.opacity(0.3), lineWidth: 1)
     }
-
+    
     private func inputField(
         icon: String,
         placeholder: String,
@@ -184,42 +189,43 @@ struct AuthView: View {
             Image(systemName: icon)
                 .foregroundStyle(.gray)
                 .frame(width: 20)
-
+            
             TextField(placeholder, text: text)
                 .autocorrectionDisabled()
         }
         .padding()
         .background(fieldBorder)
     }
-
+    
     // MARK: - Autenticação
-
-    private func handleAuthentication() {
+    
+    @MainActor
+    private func handleAuthentication() async {
+        isLoading = true
+        defer { isLoading = false }
+        
         do {
-            let user: User
-
+            let user: FirebaseAuth.User
+            
             if isSignUp {
-                user = try LocalAuthService.register(
+                user = try await FirebaseAuthService.register(
                     name: name,
                     email: email,
-                    password: password,
-                    context: modelContext
+                    password: password
                 )
             } else {
-                user = try LocalAuthService.login(
+                user = try await FirebaseAuthService.login(
                     email: email,
-                    password: password,
-                    context: modelContext
+                    password: password
                 )
             }
-
-            // Guardar sessão do utilizador autenticado
-            currentUserID = user.id
-            currentUserName = user.name
-
+            
+            currentUserID = user.uid
+            currentUserName = user.displayName ?? "Utilizador"
+            
             password = ""
             isAuthenticated = true
-
+            
         } catch {
             alertMessage = error.localizedDescription
             showAlert = true

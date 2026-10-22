@@ -8,20 +8,25 @@
 
 import SwiftUI
 import SwiftData
+import FirebaseCore
+import FirebaseAuth
 
 @main
 struct PetSpotApp: App {
+    
+    init(){
+        FirebaseApp.configure()
+    }
+    
     var body: some Scene {
         WindowGroup {
             PetSpotRootView()
         }
-        .modelContainer(
-            for: [
+        .modelContainer(for: [
                 User.self,
                 Reminder.self,
                 Pet.self
-            ]
-        )
+        ])
     }
 }
 
@@ -64,31 +69,16 @@ struct PetSpotRootView: View {
             isCheckingSession = false
         }
 
-        guard !currentUserID.isEmpty else {
+        guard let user = Auth.auth().currentUser else {
             clearSession()
             return
         }
 
-        do {
-            guard let user = try LocalAuthService.findUser(
-                id: currentUserID,
-                context: modelContext
-            ) else {
-                clearSession()
-                return
-            }
-
-            currentUserName = user.name
-            isAuthenticated = true
-
-        } catch {
-            clearSession()
-            print(
-                "Erro ao verificar sessão: \(error)"
-            )
-        }
+        currentUserID = user.uid
+        currentUserName = user.displayName ?? "Utilizador"
+        isAuthenticated = true
     }
-
+    
     private func clearSession() {
         currentUserID = ""
         currentUserName = "Utilizador"

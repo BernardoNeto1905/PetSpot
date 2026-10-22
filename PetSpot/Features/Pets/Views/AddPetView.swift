@@ -5,13 +5,12 @@
 //  Created by Bernardo on 11/10/2026.
 //
 
+
 import SwiftUI
-import SwiftData
 
 struct AddPetView: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var name = ""
     @State private var breed = ""
     @State private var birthDate = Date()
@@ -19,59 +18,118 @@ struct AddPetView: View {
     @State private var hasVaccineDate = false
     @State private var nextVaccineDate = Date()
     @State private var medicationNotes = ""
-    
+
+    @State private var isSaving = false
+    @State private var showError = false
+    @State private var errorMessage = ""
+
     var body: some View {
         NavigationStack {
             Form {
                 Section("Informações Básicas") {
                     TextField("Nome do Pet", text: $name)
                     TextField("Raça", text: $breed)
-                    DatePicker("Data de Nascimento", selection: $birthDate, displayedComponents: .date)
+
+                    DatePicker(
+                        "Data de Nascimento",
+                        selection: $birthDate,
+                        displayedComponents: .date
+                    )
                 }
-                
+
                 Section("Identificação & Saúde") {
-                    TextField("Número do Microchip", text: $microchipNumber)
-                    
-                    Toggle("Tem vacina agendada?", isOn: $hasVaccineDate)
-                    
+                    TextField(
+                        "Número do Microchip",
+                        text: $microchipNumber
+                    )
+
+                    Toggle(
+                        "Tem vacina agendada?",
+                        isOn: $hasVaccineDate
+                    )
+
                     if hasVaccineDate {
-                        DatePicker("Próxima Vacina", selection: $nextVaccineDate, displayedComponents: .date)
+                        DatePicker(
+                            "Próxima Vacina",
+                            selection: $nextVaccineDate,
+                            displayedComponents: .date
+                        )
                     }
                 }
-                
+
                 Section("Notas & Medicação") {
-                    TextField("Notas de medicação ou alergias", text: $medicationNotes, axis: .vertical)
-                        .lineLimit(3...5)
+                    TextField(
+                        "Notas de medicação ou alergias",
+                        text: $medicationNotes,
+                        axis: .vertical
+                    )
+                    .lineLimit(3...5)
                 }
             }
             .navigationTitle("Novo Pet 🐾")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Guardar") {
-                        savePet()
+                    Button("Cancelar") {
+                        dismiss()
                     }
-                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(isSaving)
                 }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        Task {
+                            await savePet()
+                        }
+                    } label: {
+                        if isSaving {
+                            ProgressView()
+                        } else {
+                            Text("Guardar")
+                        }
+                    }
+                    .disabled(
+                        name.trimmingCharacters(
+                            in: .whitespacesAndNewlines
+                        ).isEmpty || isSaving
+                    )
+                }
+            }
+            .alert(
+                "Erro ao guardar Pet",
+                isPresented: $showError
+            ) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(errorMessage)
             }
         }
     }
-    
-    private func savePet() {
-        let newPet = Pet(
-            name: name,
-            breed: breed,
-            birthDate: birthDate,
-            microchipNumber: microchipNumber,
-            nextVaccineDate: hasVaccineDate ? nextVaccineDate : nil,
-            medicationNotes: medicationNotes.isEmpty ? nil : medicationNotes
-        )
-        
-        modelContext.insert(newPet)
-        try? modelContext.save()
-        dismiss()
+
+    @MainActor
+    private func savePet() async {
+        isSaving = true
+        defer { isSaving = false }
+
+        do {
+            try await FirebasePetService.addPet(
+                name: name.trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                ),
+                breed: breed,
+                birthDate: birthDate,
+                microchipNumber: microchipNumber,
+                nextVaccineDate: hasVaccineDate
+                    ? nextVaccineDate
+                    : nil,
+                medicationNotes: medicationNotes
+            )
+
+            dismiss()
+
+        } catch {
+            errorMessage = error.localizedDescription
+            showError = true
+        }
     }
 }
