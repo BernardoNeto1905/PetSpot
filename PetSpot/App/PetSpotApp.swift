@@ -22,11 +22,6 @@ struct PetSpotApp: App {
         WindowGroup {
             PetSpotRootView()
         }
-        .modelContainer(for: [
-                User.self,
-                Reminder.self,
-                Pet.self
-        ])
     }
 }
 

@@ -6,25 +6,23 @@
 //
 
 import Foundation
-import SwiftData
- 
-@Model
-final class Reminder {
-    var id: UUID
+
+struct Reminder: Identifiable, Codable, Equatable {
+    var id: String
     var title: String
     var date: Date
     var notes: String
     var isCompleted: Bool
-    var category: String // Ex: "Vacina", "Consulta", "Desparasitação", "Outro"
-    
+    var category: String
+
     var syncWithiOSReminders: Bool
-    var iosReminderIdentifier: String? // Guarda o ID do EventKit
-    
-    // Relação opcional com o Pet
-    var pet: Pet?
+    var iosReminderIdentifier: String?
+
+    // ID do animal associado ao lembrete no Firestore.
+    var petID: String?
 
     init(
-        id: UUID = UUID(),
+        id: String = UUID().uuidString,
         title: String,
         date: Date,
         notes: String = "",
@@ -32,7 +30,7 @@ final class Reminder {
         category: String = "Geral",
         syncWithiOSReminders: Bool = false,
         iosReminderIdentifier: String? = nil,
-        pet: Pet? = nil
+        petID: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -42,6 +40,6 @@ final class Reminder {
         self.category = category
         self.syncWithiOSReminders = syncWithiOSReminders
         self.iosReminderIdentifier = iosReminderIdentifier
-        self.pet = pet
+        self.petID = petID
     }
 }

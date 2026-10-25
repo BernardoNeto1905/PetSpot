@@ -1,3 +1,4 @@
+
 //
 //  ReminderManager.swift
 //  PetSpot
@@ -7,52 +8,128 @@
 
 import Foundation
 import EventKit
+import Combine
 
-class ReminderManager: ObservableObject {
+final class ReminderManager: ObservableObject {
+
     private let eventStore = EKEventStore()
 
-    /// Pede acesso e adiciona o lembrete na app Lembretes oficial do iOS
-    func addReminder(title: String, dueDate: Date, notes: String?, completion: @escaping (String?) -> Void) {
+    /// Pede autorização e cria um lembrete na app Lembretes do iOS.
+    func addReminder(
+        title: String,
+        dueDate: Date,
+        notes: String?,
+        completion: @escaping (String?) -> Void
+    ) {
         if #available(iOS 17.0, *) {
-            eventStore.requestFullAccessToReminders { granted, error in
+            eventStore.requestFullAccessToReminders { [weak self] granted, error in
+
                 guard granted else {
-                    DispatchQueue.main.async { completion(nil) }
+                    print(
+                        "❌ Acesso aos Lembretes recusado: " +
+                        (error?.localizedDescription ?? "Sem autorização.")
+                    )
+
+                    DispatchQueue.main.async {
+                        completion(nil)
+                    }
                     return
                 }
-                self.createEKReminder(title: title, dueDate: dueDate, notes: notes, completion: completion)
+
+                guard let self else {
+                    DispatchQueue.main.async {
+                        completion(nil)
+                    }
+                    return
+                }
+
+                self.createEKReminder(
+                    title: title,
+                    dueDate: dueDate,
+                    notes: notes,
+                    completion: completion
+                )
             }
         } else {
-            eventStore.requestAccess(to: .reminder) { granted, error in
+            eventStore.requestAccess(to: .reminder) {
+                [weak self] granted, error in
+
                 guard granted else {
-                    DispatchQueue.main.async { completion(nil) }
+                    print(
+                        "❌ Acesso aos Lembretes recusado: " +
+                        (error?.localizedDescription ?? "Sem autorização.")
+                    )
+
+                    DispatchQueue.main.async {
+                        completion(nil)
+                    }
                     return
                 }
-                self.createEKReminder(title: title, dueDate: dueDate, notes: notes, completion: completion)
+
+                guard let self else {
+                    DispatchQueue.main.async {
+                        completion(nil)
+                    }
+                    return
+                }
+
+                self.createEKReminder(
+                    title: title,
+                    dueDate: dueDate,
+                    notes: notes,
+                    completion: completion
+                )
             }
         }
     }
 
-    private func createEKReminder(title: String, dueDate: Date, notes: String?, completion: @escaping (String?) -> Void) {
+    private func createEKReminder(
+        title: String,
+        dueDate: Date,
+        notes: String?,
+        completion: @escaping (String?) -> Void
+    ) {
+        guard let calendar = eventStore.defaultCalendarForNewReminders() else {
+            print("❌ Não foi encontrada uma lista de Lembretes.")
+
+            DispatchQueue.main.async {
+                completion(nil)
+            }
+            return
+        }
+
         let reminder = EKReminder(eventStore: eventStore)
+
         reminder.title = title
         reminder.notes = notes
-        reminder.calendar = eventStore.defaultCalendarForNewReminders()
+        reminder.calendar = calendar
 
-        // Adiciona alarme/notificação na data especificada
-        let alarm = EKAlarm(absoluteDate: dueDate)
-        reminder.addAlarm(alarm)
-        
-        let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: dueDate)
-        reminder.dueDateComponents = components
+        reminder.dueDateComponents = Calendar.current.dateComponents(
+            [.year, .month, .day, .hour, .minute],
+            from: dueDate
+        )
+
+        reminder.addAlarm(EKAlarm(absoluteDate: dueDate))
 
         do {
             try eventStore.save(reminder, commit: true)
+
             let identifier = reminder.calendarItemIdentifier
+
+            print("✅ Lembrete criado na app Lembretes.")
+            print("📋 Título: \(title)")
+            print("📅 Data: \(dueDate)")
+            print("🆔 Identificador: \(identifier)")
+
             DispatchQueue.main.async {
                 completion(identifier)
             }
         } catch {
-            print("Erro ao guardar lembrete no EventKit: \(error.localizedDescription)")
+            print(
+                "❌ Erro ao guardar no EventKit: " +
+                error.localizedDescription
+            )
+
             DispatchQueue.main.async {
                 completion(nil)
             }
