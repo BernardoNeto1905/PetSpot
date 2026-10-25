@@ -7,169 +7,313 @@
 
 import SwiftUI
 
-// Modelo simples para representar um alerta da comunidade
-struct PetAlert: Identifiable {
+// MARK: - Modelos de Dados
+struct CommunityPost: Identifiable {
     let id = UUID()
+    let authorName: String
+    let initials: String
     let petName: String
-    let breed: String
-    let location: String
-    let date: Date
-    let contactInfo: String
-    let description: String
-    let isLost: Bool // true se for perdido, false se for avistado/encontrado
+    let petEmoji: String
+    let timeAgo: String
+    let category: String
+    let content: String
+    var likesCount: Int
+    var commentsCount: Int
 }
 
+struct UrgentAlert: Identifiable {
+    let id = UUID()
+    let petName: String
+    let location: String
+    let timeAgo: String
+}
+
+// MARK: - CommunityView Principal
 struct CommunityView: View {
-    // Dados temporários/mock para simular alertas da comunidade
-    @State private var alerts: [PetAlert] = [
-        PetAlert(
-            petName: "Max",
-            breed: "Golden Retriever",
-            location: "Parque da Cidade, Leiria",
-            date: Date().addingTimeInterval(-3600 * 5),
-            contactInfo: "+351 912 345 678",
-            description: "Fugiu assustado com o barulho de trovões. Usa coleira azul.",
-            isLost: true
+    @State private var selectedFilter = "Geral"
+    @State private var showingAddAlert = false
+
+    let filters = ["Geral", "Pets Perdidos", "Encontros", "Dicas"]
+    
+    // Dados de demonstração
+    @State private var urgentAlert = UrgentAlert(
+        petName: "Bobi",
+        location: "Parque do Avlis",
+        timeAgo: "há 20 min"
+    )
+    
+    @State private var posts: [CommunityPost] = [
+        CommunityPost(
+            authorName: "João Silva",
+            initials: "JS",
+            petName: "Bobi",
+            petEmoji: "🐕",
+            timeAgo: "há 5 min",
+            category: "Encontro no Parque",
+            content: "Alguém vai hoje às 17h ao Parque de Cães? O Bobs quer brincar!",
+            likesCount: 12,
+            commentsCount: 4
         ),
-        PetAlert(
+        CommunityPost(
+            authorName: "Ana P.",
+            initials: "AP",
             petName: "Luna",
-            breed: "Gato Persa",
-            location: "Zona Histórica, Leiria",
-            date: Date().addingTimeInterval(-3600 * 24),
-            contactInfo: "+351 969 876 543",
-            description: "Visto perto da Sé, parece faminto mas amigável.",
-            isLost: false
+            petEmoji: "🐈",
+            timeAgo: "há 2 h",
+            category: "Dica / Pergunta",
+            content: "Qual é a melhor ração para gatos castrados com estômago sensível? Recomendações?",
+            likesCount: 8,
+            commentsCount: 6
         )
     ]
-    
-    @State private var showingAddAlert = false
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(alerts) { alert in
-                    VStack(alignment: .leading, spacing: 8) {
+            ZStack(alignment: .bottomTrailing) {
+                Color(uiColor: .systemGroupedBackground)
+                    .ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        
+                        // Header Title
                         HStack {
-                            // Etiqueta de Perigo/Estado
-                            Text(alert.isLost ? "🔴 Perdido" : "🟢 Avistado")
-                                .font(.caption)
-                                .bold()
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(alert.isLost ? Color.red.opacity(0.15) : Color.green.opacity(0.15))
-                                .foregroundColor(alert.isLost ? .red : .green)
-                                .cornerRadius(6)
+                            Text("Comunidade")
+                                .font(.system(size: 32, weight: .bold))
                             
                             Spacer()
                             
-                            Text(alert.date, style: .relative)
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
+                            // Ícone Superior
+                            ZStack {
+                                Circle()
+                                    .fill(Color.green.opacity(0.15))
+                                    .frame(width: 44, height: 44)
+                                
+                                Image(systemName: "pawprint.fill")
+                                    .foregroundColor(Color(red: 0.0, green: 0.65, blue: 0.45))
+                                    .font(.title3)
+                            }
                         }
-                        
-                        Text(alert.petName)
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+
+                        // 1. Filtros por Categoria (ScrollView Horizontal)
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 10) {
+                                ForEach(filters, id: \.self) { filter in
+                                    Button(action: {
+                                        selectedFilter = filter
+                                    }) {
+                                        Text(filter)
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                            .padding(.horizontal, 18)
+                                            .padding(.vertical, 10)
+                                            .background(
+                                                selectedFilter == filter ?
+                                                Color(red: 0.0, green: 0.65, blue: 0.45) :
+                                                Color.white
+                                            )
+                                            .foregroundColor(
+                                                selectedFilter == filter ? .white : .gray
+                                            )
+                                            .clipShape(Capsule())
+                                            .overlay(
+                                                Capsule()
+                                                    .stroke(selectedFilter == filter ? Color.clear : Color.gray.opacity(0.2), lineWidth: 1)
+                                            )
+                                    }
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+
+                        // 2. Card de Alerta Urgente (Pet Perdido)
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 6) {
+                                Text("🚨")
+                                Text("ALERTA PET PERDIDO:")
+                                    .font(.subheadline)
+                                    .bold()
+                                    .foregroundColor(Color(red: 0.75, green: 0.25, blue: 0.15))
+                            }
+                            
+                            Text("Cão '\(urgentAlert.petName)' desaparecido perto do \(urgentAlert.location) (\(urgentAlert.timeAgo))")
+                                .font(.body)
+                                .foregroundColor(Color(red: 0.75, green: 0.25, blue: 0.15))
+
+                            Button(action: {
+                                // Ação para ver detalhes
+                            }) {
+                                Text("Ver Detalhes / Ajudar")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(Color(red: 0.82, green: 0.32, blue: 0.15))
+                                    .cornerRadius(12)
+                            }
+                        }
+                        .padding(16)
+                        .background(Color(red: 1.0, green: 0.94, blue: 0.92))
+                        .cornerRadius(16)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color(red: 0.98, green: 0.80, blue: 0.75), lineWidth: 1)
+                        )
+                        .padding(.horizontal)
+
+                        // 3. Lista de Publicações
+                        VStack(spacing: 12) {
+                            ForEach(posts) { post in
+                                PostCardView(post: post)
+                            }
+                        }
+                        .padding(.horizontal)
+
+                        // Espaçamento inferior para acomodar o botão flutuante
+                        Spacer()
+                            .frame(height: 80)
+                    }
+                }
+
+                // 4. Barra Inferior / FAB (Floating Action Button)
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Partilha com a comunidade")
                             .font(.headline)
-                        
-                        Text("Raça: \(alert.breed)")
-                            .font(.subheadline)
+                            .foregroundColor(.primary)
+                        Text("Foto, pergunta ou alerta de pet perdido")
+                            .font(.caption)
                             .foregroundColor(.secondary)
-                        
-                        Text("📍 \(alert.location)")
-                            .font(.subheadline)
-                            .foregroundColor(.blue)
-                        
-                        Text(alert.description)
-                            .font(.body)
-                            .padding(.top, 2)
-                        
-                        HStack {
-                            Image(systemName: "phone.fill")
-                                .foregroundColor(.green)
-                            Text(alert.contactInfo)
-                                .font(.subheadline)
-                                .bold()
-                        }
-                        .padding(.top, 4)
                     }
-                    .padding(.vertical, 8)
-                }
-            }
-            .navigationTitle("Comunidade & Alertas")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showingAddAlert.toggle() }) {
-                        Label("Novo Alerta", systemImage: "plus.circle.fill")
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        showingAddAlert.toggle()
+                    }) {
+                        Image(systemName: "plus")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .frame(width: 56, height: 56)
+                            .background(Color(red: 0.0, green: 0.65, blue: 0.45))
+                            .clipShape(Circle())
+                            .shadow(color: Color.black.opacity(0.15), radius: 6, x: 0, y: 3)
                     }
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
             }
+            .navigationBarHidden(true)
             .sheet(isPresented: $showingAddAlert) {
                 AddAlertView { newAlert in
-                    alerts.insert(newAlert, at: 0)
+                    // Lógica ao guardar novo alerta
                 }
             }
         }
     }
 }
 
-// MARK: - Subview para Criar Novo Alerta
-struct AddAlertView: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var onSave: (PetAlert) -> Void
-
-    @State private var petName = ""
-    @State private var breed = ""
-    @State private var location = ""
-    @State private var contactInfo = ""
-    @State private var description = ""
-    @State private var isLost = true
-
+// MARK: - Componente do Card de Post
+struct PostCardView: View {
+    let post: CommunityPost
+    
     var body: some View {
-        NavigationStack {
-            Form {
-                Section(header: Text("Tipo de Alerta")) {
-                    Picker("Estado", selection: $isLost) {
-                        Text("Animal Perdido").tag(true)
-                        Text("Animal Avistado/Encontrado").tag(false)
+        VStack(alignment: .leading, spacing: 12) {
+            // Header do Post
+            HStack {
+                // Avatar
+                ZStack {
+                    Circle()
+                        .fill(Color(red: 0.90, green: 0.95, blue: 0.92))
+                        .frame(width: 42, height: 42)
+                    Text(post.initials)
+                        .font(.subheadline)
+                        .fontWeight(.bold)
+                        .foregroundColor(Color(red: 0.60, green: 0.50, blue: 0.20))
+                }
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 4) {
+                        Text(post.authorName)
+                            .font(.headline)
+                        Text("• com \(post.petName)")
+                            .font(.subheadline)
+                            .foregroundColor(.primary)
+                        Text(post.petEmoji)
                     }
-                    .pickerStyle(.segmented)
+                    
+                    HStack(spacing: 4) {
+                        Text(post.timeAgo)
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        Text("•")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        Text(post.category)
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(Color(red: 0.0, green: 0.60, blue: 0.40))
+                    }
                 }
-
-                Section(header: Text("Detalhes do Animal")) {
-                    TextField("Nome do Animal (ou 'Desconhecido')", text: $petName)
-                    TextField("Raça ou Espécie (ex: Cão Raça Mista)", text: $breed)
-                    TextField("Localização (ex: Rua Direita, Leiria)", text: $location)
-                }
-
-                Section(header: Text("Contacto e Descrição")) {
-                    TextField("Telemóvel para contacto", text: $contactInfo)
-                        .keyboardType(.phonePad)
-                    TextField("Descrição detalhada (ex: roupa, aspeto, coleira)", text: $description, axis: .vertical)
+                
+                Spacer()
+                
+                Button(action: {}) {
+                    Image(systemName: "ellipsis")
+                        .foregroundColor(.gray)
                 }
             }
-            .navigationTitle("Publicar Alerta")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }
+            
+            // Conteúdo
+            Text(post.content)
+                .font(.body)
+                .foregroundColor(.primary)
+                .multilineTextAlignment(.leading)
+            
+            Divider()
+                .padding(.top, 4)
+            
+            // Rodapé do Post (Ações)
+            HStack {
+                HStack(spacing: 4) {
+                    Image(systemName: "pawprint.fill")
+                        .font(.caption)
+                    Text("\(post.likesCount)")
+                        .font(.subheadline)
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Publicar") {
-                        let alert = PetAlert(
-                            petName: petName.isEmpty ? "Animal Sem Nome" : petName,
-                            breed: breed.isEmpty ? "Desconhecida" : breed,
-                            location: location.isEmpty ? "Localização não especificada" : location,
-                            date: Date(),
-                            contactInfo: contactInfo.isEmpty ? "Sem contacto" : contactInfo,
-                            description: description,
-                            isLost: isLost
-                        )
-                        onSave(alert)
-                        dismiss()
+                .foregroundColor(Color(red: 0.0, green: 0.60, blue: 0.40))
+                
+                Spacer()
+                
+                HStack(spacing: 4) {
+                    Image(systemName: "bubble.left")
+                        .font(.caption)
+                    Text("\(post.commentsCount)")
+                        .font(.subheadline)
+                }
+                .foregroundColor(.gray)
+                
+                Spacer()
+                
+                Button(action: {}) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.caption)
+                        Text("Partilhar")
+                            .font(.subheadline)
                     }
-                    .disabled(description.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .foregroundColor(.gray)
                 }
             }
+            .padding(.top, 2)
         }
+        .padding(16)
+        .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.03), radius: 8, x: 0, y: 2)
     }
-}	
+}

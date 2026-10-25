@@ -1,4 +1,3 @@
-
 //
 //  PetListView.swift
 //  PetSpot
@@ -186,12 +185,16 @@ struct PetListView: View {
                         ) {
                             HStack(spacing: 16) {
                                 ForEach(pets) { pet in
-                                    PetCardBannerView(
-                                        pet: pet,
-                                        accentColor: petSpotGreen
-                                    )
+                                    NavigationLink {
+                                        PetDetailView(pet: pet)
+                                    } label: {
+                                        PetCardBannerView(
+                                            pet: pet,
+                                            accentColor: petSpotGreen
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-
                                 addPetButton
                             }
                             .padding(.horizontal)

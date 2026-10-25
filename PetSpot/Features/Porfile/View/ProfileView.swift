@@ -171,23 +171,6 @@ struct ProfileView: View {
                     }
                     .padding(.horizontal)
 
-                    // Adicionar animal
-                    Button {
-                        showAddPetSheet = true
-                    } label: {
-                        Label(
-                            "Adicionar animal",
-                            systemImage: "plus.circle.fill"
-                        )
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(petSpotGreen)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 48)
-                        .background(Color(.systemBackground))
-                        .cornerRadius(16)
-                    }
-                    .padding(.horizontal)
-
                     // Terminar sessão
                     Button {
                         showLogoutConfirmation = true
