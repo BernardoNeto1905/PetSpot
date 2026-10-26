@@ -54,9 +54,6 @@ enum FirebaseAuthService {
                 "email": cleanEmail,
                 "createdAt": FieldValue.serverTimestamp()
             ])
-        
-        PushNotificationService.shared.syncTokenForCurrentUser()
-
         return user
     }
 
@@ -71,9 +68,6 @@ enum FirebaseAuthService {
             ),
             password: password
         )
-        
-        PushNotificationService.shared.syncTokenForCurrentUser()
-
         return result.user
     }
 

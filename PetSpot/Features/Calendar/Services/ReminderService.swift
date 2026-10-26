@@ -5,7 +5,6 @@
 //  Created by Calvin Calvo on 24/10/2026.
 //
 
-
 import Foundation
 import FirebaseAuth
 import FirebaseFirestore
@@ -13,7 +12,79 @@ import FirebaseFirestore
 enum ReminderService {
 
     private static let db = Firestore.firestore()
-    
+
+    // MARK: - Notificações locais
+
+    private static func notificationID(for reminderID: String) -> String {
+        "petspot_reminder_\(reminderID)"
+    }
+
+    private static func syncLocalNotification(
+        for reminder: Reminder
+    ) async {
+        let service = LocalNotificationService.shared
+        let notificationID = notificationID(for: reminder.id)
+
+        // Se estiver concluído ou a data já tiver passado,
+        // não deve existir uma notificação pendente.
+        guard !reminder.isCompleted, reminder.date > Date() else {
+            service.cancelNotification(id: notificationID)
+            return
+        }
+
+        let status = await service.checkPermission()
+
+        if status == .notDetermined {
+            let granted = (try? await service.requestPermission()) ?? false
+
+            guard granted else {
+                service.cancelNotification(id: notificationID)
+                return
+            }
+        } else {
+            switch status {
+            case .authorized, .provisional, .ephemeral:
+                break
+
+            default:
+                service.cancelNotification(id: notificationID)
+                return
+            }
+        }
+
+        let body: String
+
+        if !reminder.notes.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ).isEmpty {
+            body = reminder.notes
+        } else {
+            body = "Está na hora do teu lembrete no PetSpot."
+        }
+
+        do {
+            try await service.scheduleNotification(
+                id: notificationID,
+                title: reminder.title,
+                body: body,
+                date: reminder.date
+            )
+        } catch {
+            // Uma falha na notificação não deve impedir
+            // que o lembrete seja guardado no Firebase.
+        }
+    }
+
+    private static func cancelLocalNotification(
+        reminderID: String
+    ) {
+        LocalNotificationService.shared.cancelNotification(
+            id: notificationID(for: reminderID)
+        )
+    }
+
+    // MARK: - Firebase
+
     private static func remindersCollection() throws -> CollectionReference {
         guard let userID = Auth.auth().currentUser?.uid else {
             throw ReminderServiceError.notAuthenticated
@@ -73,6 +144,8 @@ enum ReminderService {
             "createdAt": FieldValue.serverTimestamp()
         ])
 
+        await syncLocalNotification(for: reminder)
+
         return reminder
     }
 
@@ -84,27 +157,50 @@ enum ReminderService {
             .getDocuments()
 
         return snapshot.documents.compactMap { document in
-            let data = document.data()
-
-            guard
-                let title = data["title"] as? String,
-                let timestamp = data["date"] as? Timestamp
-            else {
-                return nil
-            }
-
-            return Reminder(
+            makeReminder(
                 id: document.documentID,
-                title: title,
-                date: timestamp.dateValue(),
-                notes: data["notes"] as? String ?? "",
-                isCompleted: data["isCompleted"] as? Bool ?? false,
-                category: data["category"] as? String ?? "Geral",
-                syncWithiOSReminders: data["syncWithiOSReminders"] as? Bool ?? false,
-                iosReminderIdentifier: data["iosReminderIdentifier"] as? String,
-                petID: data["petID"] as? String
+                data: document.data()
             )
         }
+    }
+
+    private static func fetchReminder(
+        id: String
+    ) async throws -> Reminder? {
+        let document = try await remindersCollection()
+            .document(id)
+            .getDocument()
+
+        guard let data = document.data() else {
+            return nil
+        }
+
+        return makeReminder(id: document.documentID, data: data)
+    }
+
+    private static func makeReminder(
+        id: String,
+        data: [String: Any]
+    ) -> Reminder? {
+
+        guard
+            let title = data["title"] as? String,
+            let timestamp = data["date"] as? Timestamp
+        else {
+            return nil
+        }
+
+        return Reminder(
+            id: id,
+            title: title,
+            date: timestamp.dateValue(),
+            notes: data["notes"] as? String ?? "",
+            isCompleted: data["isCompleted"] as? Bool ?? false,
+            category: data["category"] as? String ?? "Geral",
+            syncWithiOSReminders: data["syncWithiOSReminders"] as? Bool ?? false,
+            iosReminderIdentifier: data["iosReminderIdentifier"] as? String,
+            petID: data["petID"] as? String
+        )
     }
 
     // MARK: - Atualizar lembrete
@@ -122,6 +218,8 @@ enum ReminderService {
                 "iosReminderIdentifier": reminder.iosReminderIdentifier as Any? ?? NSNull(),
                 "petID": reminder.petID as Any? ?? NSNull()
             ])
+
+        await syncLocalNotification(for: reminder)
     }
 
     // MARK: - Concluir / reabrir lembrete
@@ -130,11 +228,18 @@ enum ReminderService {
         reminderID: String,
         isCompleted: Bool
     ) async throws {
+
         try await remindersCollection()
             .document(reminderID)
             .updateData([
                 "isCompleted": isCompleted
             ])
+
+        if isCompleted {
+            cancelLocalNotification(reminderID: reminderID)
+        } else if let reminder = try await fetchReminder(id: reminderID) {
+            await syncLocalNotification(for: reminder)
+        }
     }
 
     // MARK: - Guardar ID do lembrete do iPhone
@@ -143,6 +248,7 @@ enum ReminderService {
         reminderID: String,
         identifier: String?
     ) async throws {
+
         try await remindersCollection()
             .document(reminderID)
             .updateData([
@@ -156,6 +262,8 @@ enum ReminderService {
         try await remindersCollection()
             .document(id)
             .delete()
+
+        cancelLocalNotification(reminderID: id)
     }
 }
 

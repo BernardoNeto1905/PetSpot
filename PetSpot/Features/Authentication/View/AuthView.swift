@@ -47,7 +47,7 @@ struct AuthView: View {
                             .font(.system(size: 32))
                             .foregroundStyle(petSpotGreen)
                         
-                        Text("PetSpot")
+                        Text("VitóriaAnimals")
                             .font(.system(size: 28, weight: .bold))
                             .foregroundStyle(petSpotGreen)
                     }
@@ -164,6 +164,12 @@ struct AuthView: View {
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(petSpotGreen)
                     }
+                    
+                    // Assinatura adicionada no final
+                    Text("Obrigado Vitória Khorun pelas ideias!")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 10)
                 }
                 .padding(.horizontal, 24)
             }
