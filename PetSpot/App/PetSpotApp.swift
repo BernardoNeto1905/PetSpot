@@ -10,9 +10,13 @@ import SwiftUI
 import SwiftData
 import FirebaseCore
 import FirebaseAuth
+import UIKit
 
 @main
 struct PetSpotApp: App {
+    
+    @UIApplicationDelegateAdaptor(PushNotificationService.self)
+    private var pushNotificationService
     
     init(){
         FirebaseApp.configure()
@@ -56,6 +60,7 @@ struct PetSpotRootView: View {
         }
         .task {
             validateSession()
+            PushNotificationService.shared.syncTokenForCurrentUser()
         }
     }
 
