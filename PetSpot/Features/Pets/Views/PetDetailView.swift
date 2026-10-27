@@ -9,8 +9,13 @@ import SwiftUI
 import UIKit
 
 struct PetDetailView: View {
-    let pet: Pet
-
+    @State private var pet : Pet
+    @State private var isEditingPet = false
+    
+    init(pet: Pet) {
+        _pet = State(initialValue: pet)
+    }
+ 
     @State private var selectedTab = 0
     @Environment(\.dismiss) private var dismiss
 
@@ -177,7 +182,9 @@ struct PetDetailView: View {
             }
 
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button {} label: {
+                Button {
+                    isEditingPet = true
+                } label: {
                     Image(systemName: "pencil")
                         .font(.headline)
                         .foregroundStyle(.primary)
@@ -188,6 +195,29 @@ struct PetDetailView: View {
                         .clipShape(Circle())
                 }
             }
+        }
+        
+        .sheet(isPresented: $isEditingPet, onDismiss: {
+            Task {
+                await refreshPet()
+            }
+        }) {
+            AddPetView(pet: pet)
+        }
+    }
+    
+    @MainActor
+    private func refreshPet() async {
+        do {
+            let updatedPets = try await PetService.fetchPets()
+
+            if let updatedPet = updatedPets.first(
+                where: { $0.id == pet.id }
+            ) {
+                pet = updatedPet
+            }
+        } catch {
+            // Mantém os dados atuais se não for possível atualizar.
         }
     }
 }
