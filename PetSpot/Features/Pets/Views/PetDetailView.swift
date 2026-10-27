@@ -6,95 +6,185 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct PetDetailView: View {
     let pet: Pet
-    @State private var selectedTab = 1 // 1 corresponde a "Saúde & Vacinas"
-    @Environment(\.dismiss) var dismiss // Para o botão de voltar funcionar corretamente
+
+    @State private var selectedTab = 0
+    @Environment(\.dismiss) private var dismiss
+
+    // MARK: - Verificar se é uma cadela
+
+    private var isFemaleDog: Bool {
+        let species = pet.species
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(
+                options: [.diacriticInsensitive, .caseInsensitive],
+                locale: .current
+            )
+
+        let gender = pet.gender
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(
+                options: [.diacriticInsensitive, .caseInsensitive],
+                locale: .current
+            )
+
+        return ["cao", "cachorro", "dog"].contains(species)
+            && ["femea", "feminino", "female"].contains(gender)
+    }
+
+    // MARK: - Abas disponíveis
+
+    private var availableTabs: [(title: String, index: Int)] {
+        var tabs: [(title: String, index: Int)] = [
+            ("Geral", 0),
+            ("Saúde & Vacinas", 1),
+            ("Documentos", 2)
+        ]
+
+        if isFemaleDog {
+            tabs.append(("Ciclo", 3))
+        }
+
+        return tabs
+    }
+
+    // MARK: - Largura dos títulos
+
+    private var totalTabWidth: CGFloat {
+        let spacing: CGFloat = 20
+
+        let titlesWidth = availableTabs.reduce(CGFloat.zero) {
+            $0 + $1.title.tabTitleWidth
+        }
+
+        let totalSpacing = CGFloat(max(availableTabs.count - 1, 0)) * spacing
+
+        return titlesWidth + totalSpacing
+    }
+
+    // MARK: - Interface
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {
-                // MARK: - Hero Header com Imagem
+
+                // MARK: Cabeçalho do animal
+
                 ZStack(alignment: .bottomLeading) {
-                    // Imagem de fundo (substitui por pet.imageName se usares URLs)
-                    Image("dog_placeholder") // Podes trocar por uma propriedade do teu modelo Pet
+                    Image("dog_placeholder")
                         .resizable()
                         .scaledToFill()
+                        .frame(maxWidth: .infinity)
                         .frame(height: 320)
                         .clipped()
 
-                    // Gradiente para legibilidade do texto
                     LinearGradient(
                         colors: [.clear, .black.opacity(0.7)],
                         startPoint: .center,
                         endPoint: .bottom
                     )
 
-                    // Informações do Pet sobre a imagem
                     VStack(alignment: .leading, spacing: 4) {
                         Text(pet.name)
                             .font(.system(size: 34, weight: .bold))
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
 
                         Text("\(pet.breed) • \(pet.ageString) • \(pet.gender)")
                             .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.9))
+                            .foregroundStyle(.white.opacity(0.9))
                     }
                     .padding()
                 }
                 .frame(height: 320)
 
-                // MARK: - Abas Deslizantes (Sem a aba Diário, que foi para o Geral)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 24) {
-                        TabButton(title: "Geral", isSelected: selectedTab == 0) { selectedTab = 0 }
-                        TabButton(title: "Saúde & Vacinas", isSelected: selectedTab == 1) { selectedTab = 1 }
-                        TabButton(title: "Documentos", isSelected: selectedTab == 2) { selectedTab = 2 }
-                    }
-                    .padding(.horizontal)
-                    .padding(.vertical, 12)
-                }
-                .background(Color(.systemBackground))
+                // MARK: Separadores centrados
 
-                // MARK: - Conteúdo da Aba Selecionada
+                GeometryReader { geometry in
+                    let horizontalPadding: CGFloat = 16
+                    let spacing: CGFloat = 20
+                    let availableWidth = geometry.size.width - horizontalPadding * 2
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: spacing) {
+                            ForEach(availableTabs, id: \.index) { tab in
+                                TabButton(
+                                    title: tab.title,
+                                    isSelected: selectedTab == tab.index
+                                ) {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        selectedTab = tab.index
+                                    }
+                                }
+                                .fixedSize(horizontal: true, vertical: false)
+                            }
+                        }
+                        .frame(
+                            minWidth: max(0, availableWidth),
+                            alignment: totalTabWidth <= availableWidth
+                                ? .center
+                                : .leading
+                        )
+                        .padding(.horizontal, horizontalPadding)
+                        .padding(.vertical, 12)
+                    }
+                    .background(Color(.systemBackground))
+                }
+                .frame(height: 52)
+
+                // MARK: Conteúdo das abas
+
                 VStack(spacing: 20) {
                     switch selectedTab {
                     case 0:
                         GeneralTab(pet: pet)
+
                     case 1:
                         HealthAndVaccinesTab(pet: pet)
+
                     case 2:
                         DocumentsTab(pet: pet)
+
+                    case 3 where isFemaleDog:
+                        ReproductiveCycleView(pet: pet)
+
                     default:
-                        EmptyView()
+                        GeneralTab(pet: pet)
                     }
                 }
-                .padding()
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
             }
         }
         .ignoresSafeArea(edges: .top)
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: {
-                    dismiss() // Faz voltar à página anterior da lista
-                }) {
+                Button {
+                    dismiss()
+                } label: {
                     Image(systemName: "chevron.left")
                         .font(.headline)
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
                         .padding(8)
-                        .background(Color(.systemBackground).opacity(0.8))
+                        .background(
+                            Color(.systemBackground).opacity(0.8)
+                        )
                         .clipShape(Circle())
                 }
             }
+
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button(action: {}) {
+                Button {} label: {
                     Image(systemName: "pencil")
                         .font(.headline)
-                        .foregroundColor(.primary)
+                        .foregroundStyle(.primary)
                         .padding(8)
-                        .background(Color(.systemBackground).opacity(0.8))
+                        .background(
+                            Color(.systemBackground).opacity(0.8)
+                        )
                         .clipShape(Circle())
                 }
             }
@@ -102,7 +192,20 @@ struct PetDetailView: View {
     }
 }
 
-// MARK: - Componente para o Botão das Tabs
+// MARK: - Largura de cada título
+
+private extension String {
+    var tabTitleWidth: CGFloat {
+        let font = UIFont.systemFont(ofSize: 15, weight: .regular)
+
+        return (self as NSString)
+            .size(withAttributes: [.font: font])
+            .width + 2
+    }
+}
+
+// MARK: - Botão das abas
+
 struct TabButton: View {
     let title: String
     let isSelected: Bool
@@ -114,24 +217,29 @@ struct TabButton: View {
                 Text(title)
                     .font(.subheadline)
                     .fontWeight(isSelected ? .semibold : .regular)
-                    .foregroundColor(isSelected ? Color(.systemGreen) : .secondary)
+                    .foregroundStyle(
+                        isSelected ? Color.green : Color.secondary
+                    )
+                    .fixedSize(horizontal: true, vertical: false)
 
                 Rectangle()
-                    .fill(isSelected ? Color(.systemGreen) : Color.clear)
+                    .fill(isSelected ? Color.green : Color.clear)
                     .frame(height: 3)
                     .cornerRadius(1.5)
             }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
 }
 
-// MARK: - Aba Geral (Com o Diário/Notas no final)
+// MARK: - Aba Geral
+
 struct GeneralTab: View {
     let pet: Pet
 
     var body: some View {
         VStack(spacing: 16) {
-            // Informações gerais do pet (podes personalizar com mais detalhes se necessário)
             VStack(alignment: .leading, spacing: 12) {
                 Text("Informações do Animal")
                     .font(.headline)
@@ -139,8 +247,10 @@ struct GeneralTab: View {
 
                 HStack {
                     Text("Raça:")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
+
                     Spacer()
+
                     Text(pet.breed)
                         .fontWeight(.medium)
                 }
@@ -149,9 +259,35 @@ struct GeneralTab: View {
 
                 HStack {
                     Text("Idade:")
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
+
                     Spacer()
+
                     Text(pet.ageString)
+                        .fontWeight(.medium)
+                }
+
+                Divider()
+
+                HStack {
+                    Text("Sexo:")
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    Text(pet.gender)
+                        .fontWeight(.medium)
+                }
+
+                Divider()
+
+                HStack {
+                    Text("Espécie:")
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    Text(pet.species)
                         .fontWeight(.medium)
                 }
             }
@@ -160,15 +296,20 @@ struct GeneralTab: View {
             .background(Color(.secondarySystemBackground))
             .cornerRadius(16)
 
-            // Diário / Notas de Medicação e Cuidados Especiais (movido para aqui)
             VStack(alignment: .leading, spacing: 8) {
-                Label("Diário, Medicação & Cuidados Especiais", systemImage: "book.closed.fill")
-                    .font(.headline)
-                    .foregroundColor(.primary)
+                Label(
+                    "Diário, Medicação & Cuidados Especiais",
+                    systemImage: "book.closed.fill"
+                )
+                .font(.headline)
+                .foregroundStyle(.primary)
 
-                Text(pet.medicationNotes ?? "Sem notas de diário, medicação ou alergias registadas.")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                Text(
+                    pet.medicationNotes
+                    ?? "Sem notas de diário, medicação ou alergias registadas."
+                )
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -178,7 +319,8 @@ struct GeneralTab: View {
     }
 }
 
-// MARK: - Aba de Saúde & Vacinas
+// MARK: - Aba Saúde & Vacinas
+
 struct HealthAndVaccinesTab: View {
     let pet: Pet
 
@@ -187,24 +329,31 @@ struct HealthAndVaccinesTab: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 12) {
                     Image(systemName: "cpu")
-                        .foregroundColor(.green)
-                    Text("Microchip #\(pet.microchipNumber.isEmpty ? "Não registado" : pet.microchipNumber)")
+                        .foregroundStyle(.green)
+
+                    let microchipText = pet.microchipNumber.isEmpty
+                        ? "Não registado"
+                        : pet.microchipNumber
+
+                    Text("Microchip #\(microchipText)")
                         .font(.subheadline)
                         .fontWeight(.medium)
                 }
 
                 HStack(spacing: 12) {
                     Image(systemName: "scalemass")
-                        .foregroundColor(.green)
-                    Text("Peso: 28.5 kg")
+                        .foregroundStyle(.green)
+
+                    Text("Peso: Não registado")
                         .font(.subheadline)
                         .fontWeight(.medium)
                 }
 
                 HStack(spacing: 12) {
                     Image(systemName: "drop")
-                        .foregroundColor(.green)
-                    Text("Grupo Sanguíneo: DEA 1.1")
+                        .foregroundStyle(.green)
+
+                    Text("Grupo Sanguíneo: Não registado")
                         .font(.subheadline)
                         .fontWeight(.medium)
                 }
@@ -218,37 +367,26 @@ struct HealthAndVaccinesTab: View {
                 HStack(spacing: 12) {
                     Image(systemName: "cross.case.fill")
                         .font(.title2)
-                        .foregroundColor(.orange)
+                        .foregroundStyle(.orange)
                         .padding(10)
                         .background(Color.orange.opacity(0.15))
                         .cornerRadius(12)
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Vacina da Raiva")
+                        Text("Vacinas")
                             .font(.subheadline)
                             .fontWeight(.bold)
-                        Text("Vence em 15 dias")
+
+                        Text("Regista e acompanha as vacinas do teu animal.")
                             .font(.caption)
-                            .foregroundColor(.orange)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
-                Spacer()
-
-                Button(action: {}) {
-                    Text("Agendar")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.green)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.white)
-                        .cornerRadius(20)
-                        .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
-                }
+                Spacer(minLength: 0)
             }
             .padding()
-            .background(Color(.systemOrange).opacity(0.1))
+            .background(Color.orange.opacity(0.1))
             .cornerRadius(16)
 
             VStack(alignment: .leading, spacing: 16) {
@@ -256,50 +394,35 @@ struct HealthAndVaccinesTab: View {
                     Text("Historial clínico")
                         .font(.headline)
                         .fontWeight(.bold)
+
                     Spacer()
-                    Text("2026")
+
+                    Text("Registos")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
 
-                VStack(alignment: .leading, spacing: 0) {
-                    ClinicalRow(
-                        icon: "stethoscope",
-                        title: "Consulta de rotina",
-                        subtitle: "Dr.ª Ana Costa · Check-up sem alterações",
-                        date: "22 Set",
-                        isLast: false
-                    )
-                    ClinicalRow(
-                        icon: "pill",
-                        title: "Desparasitação interna",
-                        subtitle: "Milbemax · 1 comprimido a cada 3 meses",
-                        date: "10 Ago",
-                        isLast: false
-                    )
-                    ClinicalRow(
-                        icon: "cross.vial",
-                        title: "Vacinação polivalente",
-                        subtitle: "Reforço anual · Próxima dose em jun. 2027",
-                        date: "14 Jun",
-                        isLast: true
-                    )
-                }
+                Text("Ainda não existem registos clínicos apresentados nesta secção.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color(.secondarySystemBackground))
             .cornerRadius(16)
 
             Button(action: {}) {
                 HStack {
                     Image(systemName: "arrow.down.doc")
+
                     Text("Descarregar PDF")
                         .fontWeight(.semibold)
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
                 .background(Color.green.opacity(0.15))
-                .foregroundColor(.green)
+                .foregroundStyle(.green)
                 .cornerRadius(16)
             }
             .padding(.top, 8)
@@ -307,7 +430,8 @@ struct HealthAndVaccinesTab: View {
     }
 }
 
-// MARK: - Linha do Historial Clínico
+// MARK: - Linha do historial clínico
+
 struct ClinicalRow: View {
     let icon: String
     let title: String
@@ -320,7 +444,7 @@ struct ClinicalRow: View {
             VStack(spacing: 0) {
                 Image(systemName: icon)
                     .font(.system(size: 14))
-                    .foregroundColor(.green)
+                    .foregroundStyle(.green)
                     .padding(8)
                     .background(Color.green.opacity(0.15))
                     .clipShape(Circle())
@@ -336,47 +460,69 @@ struct ClinicalRow: View {
                 Text(title)
                     .font(.subheadline)
                     .fontWeight(.semibold)
+
                 Text(subtitle)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
 
             Text(date)
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundStyle(.secondary)
         }
         .padding(.bottom, isLast ? 0 : 12)
     }
 }
 
-// MARK: - Aba de Documentos
+// MARK: - Aba Documentos
+
 struct DocumentsTab: View {
     let pet: Pet
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Documentos Guardados")
                 .font(.headline)
 
             VStack(spacing: 12) {
-                DocumentRow(title: "Boletim de Vacinas", icon: "doc.text.fill", color: .blue)
-                DocumentRow(title: "Seguro de Saúde", icon: "shield.fill", color: .green)
-                DocumentRow(title: "Registo Municipal", icon: "building.2.fill", color: .orange)
+                DocumentRow(
+                    title: "Boletim de Vacinas",
+                    icon: "doc.text.fill",
+                    color: .blue
+                )
+
+                DocumentRow(
+                    title: "Seguro de Saúde",
+                    icon: "shield.fill",
+                    color: .green
+                )
+
+                DocumentRow(
+                    title: "Registo Municipal",
+                    icon: "building.2.fill",
+                    color: .orange
+                )
             }
 
             Button(action: {}) {
-                Label("Adicionar Documento", systemImage: "doc.badge.plus")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.accentColor)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
+                Label(
+                    "Adicionar Documento",
+                    systemImage: "doc.badge.plus"
+                )
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.accentColor)
+                .foregroundStyle(.white)
+                .cornerRadius(12)
             }
             .padding(.top, 8)
         }
     }
 }
+
+// MARK: - Linha de documento
 
 struct DocumentRow: View {
     let title: String
@@ -386,7 +532,7 @@ struct DocumentRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .foregroundColor(color)
+                .foregroundStyle(color)
                 .font(.title3)
 
             Text(title)
@@ -396,7 +542,7 @@ struct DocumentRow: View {
 
             Image(systemName: "chevron.right")
                 .font(.caption)
-                .foregroundColor(.gray)
+                .foregroundStyle(.gray)
         }
         .padding()
         .background(Color(.secondarySystemBackground))
