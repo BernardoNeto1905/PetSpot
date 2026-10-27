@@ -200,6 +200,11 @@ struct PetDetailView: View {
         .sheet(isPresented: $isEditingPet, onDismiss: {
             Task {
                 await refreshPet()
+
+                if let pets = try? await PetService.fetchPets(),
+                   !pets.contains(where: { $0.id == pet.id }) {
+                    dismiss()
+                }
             }
         }) {
             AddPetView(pet: pet)

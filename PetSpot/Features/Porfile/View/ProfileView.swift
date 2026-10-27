@@ -24,6 +24,7 @@ struct ProfileView: View {
     @State private var showAddPetSheet = false
     @State private var errorMessage: String?
     @State private var isLoading = false
+    @State private var showEditProfile = false
 
     private let petSpotGreen = Color(
         red: 0.0,
@@ -42,14 +43,6 @@ struct ProfileView: View {
 
         return Auth.auth().currentUser?.displayName
             ?? "Utilizador"
-    }
-
-    private var petOwnerSubtitle: String {
-        if let firstPet = pets.first {
-            return "Tutor(a) do \(firstPet.name) 🐾"
-        }
-
-        return "Tutor de animais 🐾"
     }
 
     var body: some View {
@@ -91,12 +84,8 @@ struct ProfileView: View {
                             Text(userDisplayName)
                                 .font(.system(size: 22, weight: .bold))
 
-                            Text(petOwnerSubtitle)
-                                .font(.system(size: 14))
-                                .foregroundColor(.secondary)
-
                             Button("Editar perfil") {
-                                // Implementar futuramente.
+                                showEditProfile = true
                             }
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(petSpotGreen)
@@ -214,6 +203,11 @@ struct ProfileView: View {
             }
             .sheet(isPresented: $showAddPetSheet) {
                 AddPetView()
+            }
+            .sheet(isPresented: $showEditProfile) {
+                EditProfileView { updatedName, updatedEmail in
+                    currentUserName = updatedName
+                }
             }
             .confirmationDialog(
                 "Queres terminar a sessão?",
