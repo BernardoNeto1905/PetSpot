@@ -422,10 +422,9 @@ struct AddPetView: View {
                 Text(errorMessage)
             }
             
-            .confirmationDialog(
-                "Apagar animal?",
-                isPresented: $showDeleteConfirmation,
-                titleVisibility: .visible
+            .alert(
+                "Apagar animal",
+                isPresented: $showDeleteConfirmation
             ) {
                 Button("Apagar animal", role: .destructive) {
                     Task {

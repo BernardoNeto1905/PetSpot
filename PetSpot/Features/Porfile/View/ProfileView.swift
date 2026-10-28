@@ -209,10 +209,10 @@ struct ProfileView: View {
                     currentUserName = updatedName
                 }
             }
-            .confirmationDialog(
-                "Queres terminar a sessão?",
-                isPresented: $showLogoutConfirmation,
-                titleVisibility: .visible
+            
+            .alert(
+                "Terminar sessão",
+                isPresented: $showLogoutConfirmation
             ) {
                 Button("Terminar sessão", role: .destructive) {
                     logout()
@@ -220,10 +220,9 @@ struct ProfileView: View {
 
                 Button("Cancelar", role: .cancel) {}
             } message: {
-                Text(
-                    "Terás de iniciar sessão novamente para aceder à aplicação."
-                )
+                Text("Queres terminar sessão da tua conta no PetSpot?")
             }
+            
             .alert(
                 "Erro",
                 isPresented: Binding(
