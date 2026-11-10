@@ -4,73 +4,82 @@
 //
 //  Created by Bernardo on 09/10/2026.
 //
-
 import Foundation
 import CoreLocation
 import Combine
 
 @MainActor
 class MapViewModel: ObservableObject {
+
     @Published var petSpots: [PetSpotElement] = []
     @Published var isLoading = false
+    @Published var errorMessage: String?
 
-    func loadPetSpots(latitude: Double, longitude: Double) async {
-        isLoading = true
-        defer { isLoading = false }
+    private let osmService = OSMService()
 
-        let query = """
-        [out:json][timeout:25];
-        (
-          node["amenity"="veterinary"](around:5000,\(latitude),\(longitude));
-          node["leisure"="dog_park"](around:5000,\(latitude),\(longitude));
-          node["shop"="pet"](around:5000,\(latitude),\(longitude));
-        );
-        out body;
-        """
+    private var lastRequestedCoordinate: CLLocationCoordinate2D?
 
-        guard let url = URL(
-            string: "https://overpass-api.de/api/interpreter"
-        ) else {
-            print("URL inválido para a Overpass API")
+    func loadPetSpots(
+        latitude: Double,
+        longitude: Double
+    ) async {
+
+        // Evitar pedidos simultâneos
+        guard !isLoading else {
             return
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue(
-            "application/x-www-form-urlencoded",
-            forHTTPHeaderField: "Content-Type"
+        let coordinate = CLLocationCoordinate2D(
+            latitude: latitude,
+            longitude: longitude
         )
 
-        var components = URLComponents()
-        components.queryItems = [
-            URLQueryItem(name: "data", value: query)
-        ]
+        // Evitar consultas repetidas para a mesma localização
+        if let last = lastRequestedCoordinate {
 
-        request.httpBody = components.percentEncodedQuery?
-            .data(using: .utf8)
-
-        do {
-            let (data, response) = try await URLSession.shared.data(
-                for: request
+            let oldLocation = CLLocation(
+                latitude: last.latitude,
+                longitude: last.longitude
             )
 
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
-                print("Erro na resposta da API")
+            let newLocation = CLLocation(
+                latitude: latitude,
+                longitude: longitude
+            )
+
+            if oldLocation.distance(from: newLocation) < 500,
+               !petSpots.isEmpty {
                 return
             }
+        }
 
-            let decodedResponse = try JSONDecoder().decode(
-                OverpassResponse.self,
-                from: data
+        isLoading = true
+        errorMessage = nil
+
+        defer {
+            isLoading = false
+        }
+
+        do {
+
+            let results = try await osmService.fetchPetSpots(
+                near: coordinate,
+                radiusInMeters: 5000
             )
 
-            petSpots = decodedResponse.elements
+            petSpots = results
+            lastRequestedCoordinate = coordinate
 
-            print("Serviços carregados: \(petSpots.count)")
+            print("Serviços carregados: \(results.count)")
+
+        } catch is CancellationError {
+
+            print("Pedido cancelado.")
 
         } catch {
+
+            errorMessage = error.localizedDescription
+
             print(
                 "Erro ao carregar locais do OpenStreetMap: \(error.localizedDescription)"
             )

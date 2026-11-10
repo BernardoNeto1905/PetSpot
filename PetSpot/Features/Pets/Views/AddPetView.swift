@@ -25,13 +25,14 @@ struct AddPetView: View {
     @State private var hasVaccineDate: Bool
     @State private var nextVaccineDate: Date
     @State private var medicationNotes: String
-
+    
+    @State private var weight = ""
     @State private var isSaving = false
     @State private var showError = false
     @State private var errorMessage = ""
 
     private let speciesOptions = ["Cão", "Gato", "Outro"]
-    private let genderOptions = ["Macho", "Fêmea", "Não sei"]
+    private let genderOptions = ["Macho", "Fêmea"]
 
     init(pet: Pet? = nil) {
         self.pet = pet
@@ -256,6 +257,36 @@ struct AddPetView: View {
                                     }
                                 }
                             }
+                        }
+                        
+                        // Peso
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("Peso")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+
+                                Spacer()
+
+                                Text("Opcional")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            HStack {
+                                TextField("Ex.: 12,5", text: $weight)
+                                    .keyboardType(.decimalPad)
+
+                                Text("kg")
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(10)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color(.systemGray4), lineWidth: 1)
+                            )
                         }
 
                         // Microchip
@@ -487,7 +518,10 @@ struct AddPetView: View {
                     nextVaccineDate:
                         hasVaccineDate ? nextVaccineDate : nil,
                     medicationNotes:
-                        cleanNotes.isEmpty ? nil : cleanNotes
+                        cleanNotes.isEmpty ? nil : cleanNotes,
+                    weight: Double(
+                        weight.replacingOccurrences(of: ",", with: ".")
+                    )
                 )
             }
 

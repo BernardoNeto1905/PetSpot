@@ -19,6 +19,7 @@ struct Pet: Identifiable, Codable, Equatable {
     var microchipNumber: String
     var nextVaccineDate: Date?
     var medicationNotes: String?
+    var weight: Double?
     var userId: String
 
     init(
@@ -31,6 +32,7 @@ struct Pet: Identifiable, Codable, Equatable {
         microchipNumber: String,
         nextVaccineDate: Date? = nil,
         medicationNotes: String? = nil,
+        weight: Double? = nil,
         userId: String
     ) {
         self.id = id
@@ -42,6 +44,7 @@ struct Pet: Identifiable, Codable, Equatable {
         self.microchipNumber = microchipNumber
         self.nextVaccineDate = nextVaccineDate
         self.medicationNotes = medicationNotes
+        self.weight = weight
         self.userId = userId
     }
 

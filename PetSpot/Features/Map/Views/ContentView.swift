@@ -11,9 +11,7 @@ import MapKit
 struct ContentView: View {
     var viewModel: MapViewModel
     var spots: [PetSpotElement]
-    
-    @StateObject private var locationManager = LocationManager()
-    
+        
     @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .region(
             MKCoordinateRegion(
                 center: CLLocationCoordinate2D(latitude: 38.7223, longitude: -9.1393), // Lisboa por omissão

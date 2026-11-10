@@ -27,7 +27,8 @@ enum PetService {
         gender: String,
         microchipNumber: String,
         nextVaccineDate: Date?,
-        medicationNotes: String?
+        medicationNotes: String?,
+        weight: Double?
     ) async throws -> Pet {
 
         guard let userId = Auth.auth().currentUser?.uid else {
@@ -43,6 +44,7 @@ enum PetService {
             microchipNumber: microchipNumber,
             nextVaccineDate: nextVaccineDate,
             medicationNotes: medicationNotes,
+            weight: weight,
             userId: userId
         )
 

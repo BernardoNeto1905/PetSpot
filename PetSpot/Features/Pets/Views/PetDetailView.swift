@@ -379,16 +379,7 @@ struct HealthAndVaccinesTab: View {
                     Image(systemName: "scalemass")
                         .foregroundStyle(.green)
 
-                    Text("Peso: Não registado")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                }
-
-                HStack(spacing: 12) {
-                    Image(systemName: "drop")
-                        .foregroundStyle(.green)
-
-                    Text("Grupo Sanguíneo: Não registado")
+                    Text("Peso: \(pet.weight.map { String(format: "%.1f kg", $0) } ?? "Não registado")")
                         .font(.subheadline)
                         .fontWeight(.medium)
                 }
