@@ -15,65 +15,107 @@ struct ServiceListView: View {
     @StateObject private var locationManager = LocationManager()
     
     var body: some View {
-        VStack {
-            if spots.isEmpty && !viewModel.isLoading {
-                ContentUnavailableView(
-                    "Nenhum serviço encontrado",
-                    systemImage: "mappin.slash",
-                    description: Text("Tenta ajustar os filtros ou pesquisar noutra área.")
-                )
-            } else {
-                List(spots) { spot in
-                    HStack(spacing: 16) {
-                        Image(systemName: iconForCategory(spot.category))
-                            .font(.title2)
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .background(colorForCategory(spot.category))
-                            .cornerRadius(12)
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(spot.name)
-                                .font(.headline)
-                            
-                            Text(translatedCategory(spot.category))
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                
+                // Título da secção
+                Text("Serviços perto de ti")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                
+                if spots.isEmpty && !viewModel.isLoading {
+                    // Estado Vazio
+                    VStack(spacing: 12) {
+                        Image(systemName: "mappin.slash")
+                            .font(.system(size: 40))
+                            .foregroundColor(.secondary)
+                        Text("Nenhum serviço encontrado")
+                            .font(.headline)
+                        Text("Usa os filtros para encontrar o serviço de que o teu pet precisa.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(24)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.green.opacity(0.1))
+                    .cornerRadius(20)
+                    .padding(.horizontal, 16)
+                } else {
+                    // Lista de Cartões Modernos com dados reais
+                    LazyVStack(spacing: 16) {
+                        ForEach(spots) { spot in
+                            VStack(alignment: .leading, spacing: 12) {
+                                
+                                // Cabeçalho do Cartão: Nome e Categoria Real
+                                HStack(alignment: .top) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(spot.name)
+                                            .font(.title3)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.primary)
+
+                                        Text(translatedCategory(spot.category))
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    Spacer()
+                                }
+
+                                // Botões de Ação Rápida
+                                HStack(spacing: 12) {
+                                    Button(action: {
+                                        // Ação de Ligar
+                                    }) {
+                                        Label("Ligar", systemImage: "phone.fill")
+                                            .font(.subheadline)
+                                            .fontWeight(.semibold)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 12)
+                                            .background(Color.green)
+                                            .foregroundColor(.white)
+                                            .cornerRadius(16)
+                                    }
+
+                                    Button(action: {
+                                        // Ação de Direções
+                                    }) {
+                                        Label("Obter Direções", systemImage: "location.fill")
+                                            .font(.subheadline)
+                                            .fontWeight(.semibold)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 12)
+                                            .background(Color.green.opacity(0.12))
+                                            .foregroundColor(.green)
+                                            .cornerRadius(16)
+                                    }
+                                }
+                            }
+                            .padding(20)
+                            .background(Color(.systemBackground))
+                            .cornerRadius(24)
+                            .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 4)
+                            .padding(.horizontal, 16)
                         }
-                        
-                        Spacer()
-                    }
-                    .padding(.vertical, 4)
-                }
-                .listStyle(.plain)
-                .refreshable {
-                    // Recarrega os dados com as coordenadas atuais do GPS
-                    if let location = locationManager.userLocation {
-                        await viewModel.loadPetSpots(latitude: location.latitude, longitude: location.longitude)
-                    } else {
-                        await viewModel.loadPetSpots(latitude: 38.7223, longitude: -9.1393)
                     }
                 }
+            }
+            .padding(.bottom, 30)
+        }
+        .background(Color(.systemGroupedBackground))
+        .refreshable {
+            if let location = locationManager.userLocation {
+                await viewModel.loadPetSpots(latitude: location.latitude, longitude: location.longitude)
+            } else {
+                await viewModel.loadPetSpots(latitude: 38.7223, longitude: -9.1393)
             }
         }
     }
     
-    // Suporte para termos em Português e Inglês (OSM / Overpass)
-    private func iconForCategory(_ category: String) -> String {
-        let cat = category.lowercased()
-        if cat.contains("vet") || cat.contains("veterinary") { return "cross.vial.fill" }
-        if cat.contains("parque") || cat.contains("park") || cat.contains("dog_park") { return "leaf.fill" }
-        return "bag.fill"
-    }
-    
-    private func colorForCategory(_ category: String) -> Color {
-        let cat = category.lowercased()
-        if cat.contains("vet") || cat.contains("veterinary") { return .red }
-        if cat.contains("parque") || cat.contains("park") || cat.contains("dog_park") { return .green }
-        return .orange
-    }
-    
-    // Traduz as tags brutas do OSM para nomes amigáveis em Português
     private func translatedCategory(_ category: String) -> String {
         let cat = category.lowercased()
         if cat.contains("vet") || cat.contains("veterinary") { return "Veterinário" }
